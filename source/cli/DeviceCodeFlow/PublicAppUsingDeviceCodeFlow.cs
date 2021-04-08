@@ -4,38 +4,43 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensions.Msal;
+using Microsoft.Extensions.Logging;
 
 namespace password.vault.cli
 {
     public class PublicAppUsingDeviceCodeFlow
     {
+        private readonly ILogger<Passwords> _logger;
         protected IPublicClientApplication App { get; private set; }
         private const string cacheFileName = ".msal_cache";
         private readonly static string cacheDirectory = MsalCacheHelper.UserRootDirectory;
         
-        public PublicAppUsingDeviceCodeFlow(IPublicClientApplication app)
+        public PublicAppUsingDeviceCodeFlow(IPublicClientApplication app, ILogger<Passwords> logger)
         {
             App = app;
             var cacheHelper = CreateCacheHelperAsync().GetAwaiter().GetResult();
-            cacheHelper.RegisterCache(app.UserTokenCache);
+            //cacheHelper.RegisterCache(app.UserTokenCache);
+
+            _logger = logger;
         }
         
         public async Task<AuthenticationResult> GetTokenForWebApi(IEnumerable<String> scopes)
         {
             AuthenticationResult result = null;
 
-            var accounts = await App.GetAccountsAsync(); 
+            var accounts = await App.GetAccountsAsync();
 
-            if( accounts.Any() )
-            {
-                try {
-                    result = await App.AcquireTokenSilent(scopes, accounts.FirstOrDefault())
-                        .ExecuteAsync();
-                }
-                catch (MsalUiRequiredException) {}
+            try {
+                _logger.LogDebug("Calling App.AcquireTokenSilent");
+                result = await App.AcquireTokenSilent(scopes, accounts.FirstOrDefault())
+                    .ExecuteAsync();
+            }
+            catch (MsalUiRequiredException) {
+                _logger.LogDebug("MsalUiRequiredException caught");
             }
 
             if( result == null ) {
+                _logger.LogDebug("Calling GetTokenForWebApiUsingDeviceCodeFlowAsync");
                 result = await GetTokenForWebApiUsingDeviceCodeFlowAsync(scopes);
             }
 

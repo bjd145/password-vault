@@ -3,6 +3,7 @@
 using System;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
@@ -30,7 +31,7 @@ namespace password.vault.cli
         
         public Passwords(IPublicClientApplication app, PasswordConfiguration config, ILogger<Passwords> logger)
         {
-            tokenAcquisitionHelper = new PublicAppUsingDeviceCodeFlow(app);
+            tokenAcquisitionHelper = new PublicAppUsingDeviceCodeFlow(app, logger);
             protectedApiCallHelper = new ProtectedApiCallHelper<PasswordHistory>(client);
 
             this.PasswordEndPoint = config.PasswordApiEndpoint;
@@ -42,15 +43,26 @@ namespace password.vault.cli
 
         public async Task GetPasswordHistory(string id)
         {
-            AuthenticationResult authenticationResult = await tokenAcquisitionHelper.GetTokenForWebApi(Scopes);
-            PasswordId = id;
+            int x = 0;
+            do{
+                Console.WriteLine($"Request for token at {DateTime.Now}");
+                AuthenticationResult authenticationResult = await tokenAcquisitionHelper.GetTokenForWebApi(Scopes);
+                PasswordId = id;
             
-            if (authenticationResult != null)
-            {
-                DisplaySignedInAccount(authenticationResult.Account, authenticationResult.AccessToken);
-                var result = await CallWebApiAsync(PasswordHistoryUrl, authenticationResult.AccessToken);
-                Display(result);
-            }
+                if (authenticationResult != null)
+                {
+                    DisplaySignedInAccount(authenticationResult.Account, authenticationResult.AccessToken);
+                    var result = await CallWebApiAsync(PasswordHistoryUrl, authenticationResult.AccessToken);
+                    Display(result);
+                }
+
+                TimeSpan interval = new TimeSpan(1,30,0);
+                Console.WriteLine($"Sleeping for {interval.TotalSeconds} seconds");
+                Thread.Sleep(interval);
+
+                x++;
+            } while(x < 2);
+
         }
 
         private void DisplaySignedInAccount(IAccount account, string token)
