@@ -29,7 +29,7 @@ namespace password.vault.cli
 
             var appConfig = config.PublicClientApplicationOptions;
             var app = PublicClientApplicationBuilder.CreateWithApplicationOptions(appConfig)
-                .WithRedirectUri("http://localhost")  
+                .WithDefaultRedirectUri() 
                 .Build();
 
             ILogger<Passwords> logger = loggerFactory.CreateLogger<Passwords>();
